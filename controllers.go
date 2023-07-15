@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func shorten(c *gin.Context) {
@@ -25,6 +26,14 @@ func shorten(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"status": true})
 }
 
-func redirect(c *gin.Context) {}
+func redirect(c *gin.Context) {
+	shorthand := c.Param("shorthand")
+	result := collection.FindOne(context.TODO(), bson.D{{"short", shorthand}})
+
+	var url URL
+	result.Decode(&url)
+
+	c.Redirect(http.StatusMovedPermanently, url.Long)
+}
 
 func analytics(c *gin.Context) {}

@@ -64,3 +64,14 @@ func TestShortenRouteFailure(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestRedirect(t *testing.T) {
+	r := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/redirect/abc", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+	assert.Contains(t, w.Body.String(), "google")
+}
