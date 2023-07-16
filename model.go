@@ -1,6 +1,7 @@
 package main
 
 type URL struct {
-	Long  string
-	Short string
+	Long     string
+	Short    string
+	Password string
 }

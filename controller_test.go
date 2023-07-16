@@ -65,7 +65,29 @@ func TestShortenRouteFailure(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestRedirect(t *testing.T) {
+func TestShortenRouteWithPassword(t *testing.T) {
+	r := setupRouter()
+
+	var buf bytes.Buffer
+
+	err := json.NewEncoder(&buf).Encode(URL{Long: "https://google.com", Short: "def", Password: "password"})
+	if err != nil {
+		panic(err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/shorten", &buf)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	result := collection.FindOne(context.TODO(), bson.D{{"short", "def"}}, options.FindOne())
+	var url URL
+	result.Decode(&url)
+	assert.Equal(t, url.Long, "https://google.com")
+}
+
+func TestRedirectRoute(t *testing.T) {
 	r := setupRouter()
 
 	w := httptest.NewRecorder()
@@ -74,4 +96,23 @@ func TestRedirect(t *testing.T) {
 
 	assert.Equal(t, http.StatusMovedPermanently, w.Code)
 	assert.Contains(t, w.Body.String(), "google")
+}
+
+func TestRedirectRouteWithPassword(t *testing.T) {
+	r := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/redirect/def", nil)
+	req.Header.Add("Authorization", "bearer password")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+	assert.Contains(t, w.Body.String(), "google")
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/redirect/def", nil)
+	req.Header.Add("Authorization", "bearer wrong-password")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

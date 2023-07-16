@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,6 +20,12 @@ func shorten(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "please provide both long and short url"})
 		return
 	}
+
+	// Store password hash in db
+	if requestBody.Password != "" {
+		requestBody.Password = hash(requestBody.Password)
+	}
+
 	_, err := collection.InsertOne(context.TODO(), requestBody)
 	if err != nil {
 		panic(err)
@@ -33,7 +40,18 @@ func redirect(c *gin.Context) {
 	var url URL
 	result.Decode(&url)
 
-	c.Redirect(http.StatusMovedPermanently, url.Long)
+	if url.Password == "" {
+		c.Redirect(http.StatusMovedPermanently, url.Long)
+		return
+	}
+
+	auth_header := c.GetHeader("Authorization")
+	password := strings.Split(auth_header, " ")[1] // Bearer token
+	if compare_password(password, url.Password) {
+		c.Redirect(http.StatusMovedPermanently, url.Long)
+		return
+	}
+	c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "please provide password in the form of bearer token viewing this url requires authentication"})
 }
 
 func analytics(c *gin.Context) {}
