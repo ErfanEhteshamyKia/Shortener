@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
@@ -147,4 +148,27 @@ func TestShortenRouteWithDuplicateShorthand(t *testing.T) {
 	var url URL
 	result.Decode(&url)
 	assert.Equal(t, url.Long, "https://google.com")
+}
+
+func TestExpiredRoute(t *testing.T) {
+	r := setupRouter()
+
+	var buf bytes.Buffer
+
+	err := json.NewEncoder(&buf).Encode(URL{Long: "https://google.com", Short: "hello", ExpiredAt: time.Now().Add(-1 * time.Hour)})
+	if err != nil {
+		panic(err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/shorten", &buf)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/redirect/hello", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusGone, w.Code)
 }

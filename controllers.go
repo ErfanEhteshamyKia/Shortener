@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,6 +19,10 @@ func shorten(c *gin.Context) {
 
 	if requestBody.Long == "" || requestBody.Short == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"success": false, "message": "please provide both long and short url"})
+	}
+
+	if requestBody.ExpiredAt.IsZero() {
+		requestBody.ExpiredAt = time.Now().Add(24 * time.Hour)
 	}
 
 	// Store password hash in db
@@ -46,6 +51,11 @@ func redirect(c *gin.Context) {
 
 	var url URL
 	result.Decode(&url)
+
+	now := time.Now()
+	if now.After(url.ExpiredAt) {
+		c.AbortWithStatus(http.StatusGone)
+	}
 
 	if url.Password == "" {
 		c.Redirect(http.StatusMovedPermanently, url.Long)
