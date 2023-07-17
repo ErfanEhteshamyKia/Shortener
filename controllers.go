@@ -13,13 +13,11 @@ import (
 func shorten(c *gin.Context) {
 	var requestBody URL
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": false, "message": "json decoding error"})
-		return
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"success": false, "message": "json decoding error"})
 	}
 
 	if requestBody.Long == "" || requestBody.Short == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"status": false, "message": "please provide both long and short url"})
-		return
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"success": false, "message": "please provide both long and short url"})
 	}
 
 	// Store password hash in db
@@ -29,15 +27,14 @@ func shorten(c *gin.Context) {
 
 	result := collection.FindOne(context.TODO(), bson.D{{"short", requestBody.Short}})
 	if result.Err() != mongo.ErrNoDocuments {
-		c.JSON(http.StatusConflict, gin.H{"status": false, "message": "shorthand already exists"})
-		return
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"success": false, "message": "shorthand already exists"})
 	}
 
 	_, err := collection.InsertOne(context.TODO(), requestBody)
 	if err != nil {
 		panic(err)
 	}
-	c.JSON(http.StatusCreated, gin.H{"status": true})
+	c.JSON(http.StatusCreated, gin.H{"success": true})
 }
 
 func redirect(c *gin.Context) {
@@ -61,7 +58,7 @@ func redirect(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, url.Long)
 		return
 	}
-	c.JSON(http.StatusUnauthorized, gin.H{"status": false, "message": "please provide password in the form of bearer token viewing this url requires authentication"})
+	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"success": false, "message": "please provide password in the form of bearer token viewing this url requires authentication"})
 }
 
 func analytics(c *gin.Context) {}
