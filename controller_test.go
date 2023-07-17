@@ -117,6 +117,16 @@ func TestRedirectRouteWithPassword(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
+func TestRedirectNotFound(t *testing.T) {
+	r := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/redirect/hey", nil)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestShortenRouteWithDuplicateShorthand(t *testing.T) {
 	r := setupRouter()
 

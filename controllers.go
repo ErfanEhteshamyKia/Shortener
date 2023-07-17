@@ -43,6 +43,9 @@ func shorten(c *gin.Context) {
 func redirect(c *gin.Context) {
 	shorthand := c.Param("shorthand")
 	result := collection.FindOne(context.TODO(), bson.D{{"short", shorthand}})
+	if result.Err() == mongo.ErrNoDocuments {
+		c.AbortWithStatus(http.StatusNotFound)
+	}
 
 	var url URL
 	result.Decode(&url)
