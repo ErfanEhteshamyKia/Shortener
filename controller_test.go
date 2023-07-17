@@ -116,3 +116,25 @@ func TestRedirectRouteWithPassword(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+func TestShortenRouteWithDuplicateShorthand(t *testing.T) {
+	r := setupRouter()
+
+	var buf bytes.Buffer
+
+	err := json.NewEncoder(&buf).Encode(URL{Long: "https://amazon.com", Short: "abc"})
+	if err != nil {
+		panic(err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/shorten", &buf)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+
+	result := collection.FindOne(context.TODO(), bson.D{{"short", "abc"}}, options.FindOne())
+	var url URL
+	result.Decode(&url)
+	assert.Equal(t, url.Long, "https://google.com")
+}
