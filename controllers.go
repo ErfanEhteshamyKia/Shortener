@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func shorten(c *gin.Context) {
@@ -24,6 +25,12 @@ func shorten(c *gin.Context) {
 	// Store password hash in db
 	if requestBody.Password != "" {
 		requestBody.Password = hash(requestBody.Password)
+	}
+
+	result := collection.FindOne(context.TODO(), bson.D{{"short", requestBody.Short}})
+	if result.Err() != mongo.ErrNoDocuments {
+		c.JSON(http.StatusConflict, gin.H{"status": false, "message": "shorthand already exists"})
+		return
 	}
 
 	_, err := collection.InsertOne(context.TODO(), requestBody)
