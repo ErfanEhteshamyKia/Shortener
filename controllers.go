@@ -57,18 +57,40 @@ func redirect(c *gin.Context) {
 		c.AbortWithStatus(http.StatusGone)
 	}
 
-	if url.Password == "" {
-		c.Redirect(http.StatusMovedPermanently, url.Long)
-		return
-	}
-
 	auth_header := c.GetHeader("Authorization")
-	password := strings.Split(auth_header, " ")[1] // Bearer token
-	if compare_password(password, url.Password) {
+	password := ""
+	if len(strings.Split(auth_header, " ")) == 2 {
+		password = strings.Split(auth_header, " ")[1] // Bearer token
+	}
+	if url.Password == "" || compare_password(password, url.Password) {
+		click := Click{Short: shorthand, Time: time.Now()}
+		collection.InsertOne(context.TODO(), click)
 		c.Redirect(http.StatusMovedPermanently, url.Long)
 		return
 	}
 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"success": false, "message": "please provide password in the form of bearer token viewing this url requires authentication"})
 }
 
-func analytics(c *gin.Context) {}
+func analytics(c *gin.Context) {
+	shorthand := c.Param("shorthand")
+	var requestBody AnalyticsRequest
+	c.ShouldBindJSON(&requestBody)
+
+	if requestBody.Finish.IsZero() {
+		requestBody.Finish = time.Now()
+	}
+
+	filter := bson.M{
+		"short": shorthand,
+		"time": bson.M{
+			"$gt": requestBody.Start,
+			"$lt": requestBody.Finish,
+		},
+	}
+	clicks, err := collection.CountDocuments(context.TODO(), filter)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"success": false, "message": "database access error"})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "clicks": clicks})
+}

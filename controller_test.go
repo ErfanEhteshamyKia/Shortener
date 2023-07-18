@@ -172,3 +172,35 @@ func TestExpiredRoute(t *testing.T) {
 
 	assert.Equal(t, http.StatusGone, w.Code)
 }
+
+func TestAnalyticsWithoutPeriod(t *testing.T) {
+	r := setupRouter()
+
+	var buf bytes.Buffer
+
+	err := json.NewEncoder(&buf).Encode(URL{Long: "https://google.com", Short: "test"})
+	if err != nil {
+		panic(err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/shorten", &buf)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/redirect/test", &buf)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusMovedPermanently, w.Code)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/analytics/test", &buf)
+	r.ServeHTTP(w, req)
+
+	var resp AnalyticsResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	assert.Equal(t, 1, resp.Clicks)
+}
