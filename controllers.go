@@ -73,18 +73,19 @@ func redirect(c *gin.Context) {
 
 func analytics(c *gin.Context) {
 	shorthand := c.Param("shorthand")
-	var requestBody AnalyticsRequest
-	c.ShouldBindJSON(&requestBody)
+	var params AnalyticsRequest
+	params.Start, _ = time.Parse(time.RFC3339, c.Request.URL.Query().Get("start"))
+	params.Finish, _ = time.Parse(time.RFC3339, c.Request.URL.Query().Get("finish"))
 
-	if requestBody.Finish.IsZero() {
-		requestBody.Finish = time.Now()
+	if params.Finish.IsZero() {
+		params.Finish = time.Now()
 	}
 
 	filter := bson.M{
 		"short": shorthand,
 		"time": bson.M{
-			"$gt": requestBody.Start,
-			"$lt": requestBody.Finish,
+			"$gt": params.Start,
+			"$lt": params.Finish,
 		},
 	}
 	clicks, err := collection.CountDocuments(context.TODO(), filter)

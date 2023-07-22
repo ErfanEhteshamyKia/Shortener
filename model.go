@@ -15,8 +15,8 @@ type Click struct {
 }
 
 type AnalyticsRequest struct {
-	Start  time.Time
-	Finish time.Time
+	Start  time.Time `query:"start"`
+	Finish time.Time `query:"finish"`
 }
 
 type AnalyticsResponse struct {

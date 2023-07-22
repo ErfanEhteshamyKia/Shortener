@@ -190,13 +190,38 @@ func TestAnalyticsWithoutPeriod(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, w.Code)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/redirect/test", &buf)
+	req, _ = http.NewRequest("GET", "/redirect/test", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusMovedPermanently, w.Code)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/analytics/test", &buf)
+	req, _ = http.NewRequest("GET", "/analytics/test", nil)
+	r.ServeHTTP(w, req)
+
+	var resp AnalyticsResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	assert.Equal(t, 1, resp.Clicks)
+}
+
+func TestAnalyticsWithPeriod(t *testing.T) {
+	r := setupRouter()
+
+	var documents []interface{}
+	for i := 1; i < 11; i++ {
+		documents = append(documents, Click{Short: "TestingPeriod", Time: time.Now().Add(time.Duration(-i*10) * time.Minute)})
+	}
+	collection.InsertMany(context.TODO(), documents)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/analytics/TestingPeriod", nil)
+
+	q := req.URL.Query()
+	q.Add("start", time.Now().Add(-25*time.Minute).Format(time.RFC3339))
+	q.Add("finish", time.Now().Add(-15*time.Minute).Format(time.RFC3339))
+	req.URL.RawQuery = q.Encode()
+
 	r.ServeHTTP(w, req)
 
 	var resp AnalyticsResponse
